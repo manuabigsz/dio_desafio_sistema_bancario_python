@@ -4,71 +4,86 @@ class Usuario:
         self.data_nascimento = data_nascimento
         self.cpf = cpf
         self.endereco = endereco
+        self.contas = []
 
-class ContaCorrente:
-    numero_conta = 0
-    agencia = "0001"
+    def adicionar_conta(self, conta):
+        self.contas.append(conta)
 
-    def __init__(self, usuario):
-        ContaCorrente.numero_conta += 1
-        self.numero = ContaCorrente.numero_conta
-        self.usuario = usuario
+class Historico:
+    def __init__(self):
+        self.transacoes = []
+
+    def adicionar_transacao(self, transacao):
+        self.transacoes.append(transacao)
+
+class Conta:
+    def __init__(self, cliente, numero, agencia="0001"):
         self.saldo = 0.0
-        self.limite = 500
-        self.limite_diario = 3
-        self.saques = 0
-        self.extrato = []
+        self.numero = numero
+        self.agencia = agencia
+        self.cliente = cliente
+        self.historico = Historico()
+        cliente.adicionar_conta(self)
 
     def depositar(self, valor):
         if valor > 0:
             self.saldo += valor
-            self.extrato.append(f"Depósito: R$ {valor:.2f}")
+            self.historico.adicionar_transacao(f"Depósito: R$ {valor:.2f}")
+        else:
+            print("Valor inválido para depósito.")
 
     def sacar(self, valor):
-        if self.saques < self.limite_diario:
-            if valor > self.limite:
-                print("Falha! Valor de saque excedido")
-            elif valor > self.saldo:
-                print("Falha! Saldo insuficiente")
-            elif valor > 0:
-                self.saldo -= valor
-                self.extrato.append(f"Saque: R$ {valor:.2f}")
-                self.saques += 1
-            else:
-                print("Valor inválido de saque")
+        if valor > self.saldo:
+            print("Saldo insuficiente.")
+        elif valor > 0:
+            self.saldo -= valor
+            self.historico.adicionar_transacao(f"Saque: R$ {valor:.2f}")
+        else:
+            print("Valor inválido para saque.")
 
     def exibir_extrato(self):
-        if not self.extrato:
-            print("Nenhuma operação foi realizada.")
-        else:
-            for operacao in self.extrato:
-                print(operacao)
-            print(f"\nSaldo: R$ {self.saldo:.2f}")
+        for transacao in self.historico.transacoes:
+            print(transacao)
+        print(f"\nSaldo: R$ {self.saldo:.2f}")
 
+class ContaCorrente(Conta):
+    def __init__(self, cliente, numero):
+        super().__init__(cliente, numero)
+        self.limite = 500.0
+        self.limite_saques = 3
+        self.saques_realizados = 0
+
+    def sacar(self, valor):
+        if self.saques_realizados >= self.limite_saques:
+            print("Limite diário de saques atingido.")
+        elif valor > self.limite:
+            print("Valor de saque excede o limite.")
+        else:
+            super().sacar(valor)
+            self.saques_realizados += 1
 def criar_usuario(usuarios):
     nome = input("Digite o nome do usuário: ")
     data_nascimento = input("Digite a data de nascimento (DD/MM/AAAA): ")
     cpf = input("Digite o CPF do usuário: ")
     endereco = input("Digite o endereço do usuário (logradouro, número - bairro - cidade/estado): ")
-    cpf_numeros = ''.join(filter(str.isdigit, cpf))  # Extrai apenas os dígitos do CPF
+    cpf_numeros = ''.join(filter(str.isdigit, cpf))
     if any(u.cpf == cpf_numeros for u in usuarios):
         print("CPF já cadastrado!")
         return None
     return Usuario(nome, data_nascimento, cpf_numeros, endereco)
 
 def cadastrar_conta(usuarios, contas):
-    usuario = None
-    while not usuario:
-        cpf = input("Digite o CPF do usuário para associar a conta: ")
-        cpf_numeros = ''.join(filter(str.isdigit, cpf))
-        usuario = next((u for u in usuarios if u.cpf == cpf_numeros), None)
-        if not usuario:
-            print("Usuário não encontrado!")
-
-    conta = ContaCorrente(usuario)
-    contas.append(conta)
-    print(f"Conta criada com sucesso para o usuário {usuario.nome}!")
-    return conta
+    cpf = input("Digite o CPF do usuário para associar a conta: ")
+    cpf_numeros = ''.join(filter(str.isdigit, cpf))
+    usuario = next((u for u in usuarios if u.cpf == cpf_numeros), None)
+    if usuario:
+        numero_conta = len(contas) + 1
+        conta = ContaCorrente(usuario, numero_conta)
+        contas.append(conta)
+        print(f"Conta criada com sucesso para o usuário {usuario.nome}!")
+        return conta
+    else:
+        print("Usuário não encontrado!")
 
 def listar_usuarios(usuarios):
     if not usuarios:
